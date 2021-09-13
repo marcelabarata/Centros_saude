@@ -1,0 +1,394 @@
+
+<!--DOCTYPE html-->
+<html lang="en,pt">
+  <head>
+      <meta charset="utf-8">
+      <title>Número de centros de saúde</title>
+
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+        integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+        crossorigin=""/>   
+		
+	<!--Zoom Home-->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"/>           
+		
+		<link rel="stylesheet" href="style.css">
+
+		<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+        integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+        crossorigin=""></script>
+
+		<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"
+        integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU="
+        crossorigin="anonymous"></script>
+		<script src="https://unpkg.com/esri-leaflet@2.4.1/dist/esri-leaflet.js" integrity="sha512-xY2smLIHKirD03vHKDJ2u4pqeHA7OQZZ27EjtqmuhDguxiUvdsOuXMwkg16PQrm9cgTmXtoxA6kwr8KBy3cdcw=="crossorigin=""></script>
+		
+	<!--Mapa de base cinzento-->		
+		<script type="text/javascript" src="casos_10k.geojson"></script>
+	
+	
+      <style>
+          html, body { margin: 0; padding: 0; height: 100%; }
+          #map { min-height: 100%; }
+		  
+		  /* --- Zoom Home --- */
+		  .leaflet-bar a { background-color: #fff; border-bottom: 1px solid #ccc; color: #444; display: block; height: 26px; width: 26px; line-height: 1.45 !important; text-align: center; text-decoration: none; font: bold 18px  monospace; }
+      </style>
+  </head>
+
+  <body>
+      <div id="map"></div>
+
+      <script>
+          
+		  var sudoeste = L.latLng(25, -34),
+			nordeste = L.latLng(45.3, 0),
+			extensao = L.latLngBounds(sudoeste, nordeste);
+	
+	
+		var map = L.map('map', {
+			zoomControl: false,
+			center: [39, -17],
+			zoom:5,
+			maxZoom: 12,
+			minZoom: 5,
+			maxBounds: extensao,
+		});
+			
+			var lat = 37.6; // __________Zoom Home
+			var lng = -17; // __________Zoom Home
+			var zoom = 6; // __________Zoom Home
+			
+			map.setView([lat, lng], zoom); // __________Zoom Home
+			
+         var layer = L.esri.basemapLayer('Gray').addTo(map);
+		  
+		  // __________Zoom Home
+		  
+		  // custom zoom bar control that includes a Zoom Home function
+L.Control.zoomHome = L.Control.extend({
+    options: {
+        position: 'topleft',
+        zoomInText: '+',
+        zoomInTitle: 'Zoom in',
+        zoomOutText: '-',
+        zoomOutTitle: 'Zoom out',
+        zoomHomeText: '<i class="fa fa-home" style="line-height:1.65;"></i>',
+        zoomHomeTitle: 'Zoom home'
+    },
+
+    onAdd: function (map) {
+        var controlName = 'gin-control-zoom',
+            container = L.DomUtil.create('div', controlName + ' leaflet-bar'),
+            options = this.options;
+
+        this._zoomInButton = this._createButton(options.zoomInText, options.zoomInTitle,
+        controlName + '-in', container, this._zoomIn);
+        this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,
+        controlName + '-home', container, this._zoomHome);
+        this._zoomOutButton = this._createButton(options.zoomOutText, options.zoomOutTitle,
+        controlName + '-out', container, this._zoomOut);
+
+        this._updateDisabled();
+        map.on('zoomend zoomlevelschange', this._updateDisabled, this);
+
+        return container;
+    },
+
+    onRemove: function (map) {
+        map.off('zoomend zoomlevelschange', this._updateDisabled, this);
+    },
+
+    _zoomIn: function (e) {
+        this._map.zoomIn(e.shiftKey ? 3 : 1);
+    },
+
+    _zoomOut: function (e) {
+        this._map.zoomOut(e.shiftKey ? 3 : 1);
+    },
+
+    _zoomHome: function (e) {
+        map.setView([lat, lng], zoom);
+    },
+
+    _createButton: function (html, title, className, container, fn) {
+        var link = L.DomUtil.create('a', className, container);
+        link.innerHTML = html;
+        link.href = '#';
+        link.title = title;
+
+        L.DomEvent.on(link, 'mousedown dblclick', L.DomEvent.stopPropagation)
+            .on(link, 'click', L.DomEvent.stop)
+            .on(link, 'click', fn, this)
+            .on(link, 'click', this._refocusOnMap, this);
+
+        return link;
+    },
+
+    _updateDisabled: function () {
+        var map = this._map,
+            className = 'leaflet-disabled';
+
+        L.DomUtil.removeClass(this._zoomInButton, className);
+        L.DomUtil.removeClass(this._zoomOutButton, className);
+
+        if (map._zoom === map.getMinZoom()) {
+            L.DomUtil.addClass(this._zoomOutButton, className);
+        }
+        if (map._zoom === map.getMaxZoom()) {
+            L.DomUtil.addClass(this._zoomInButton, className);
+        }
+    }
+});
+
+            $.getJSON('centrosaude.geojson') 
+            .done(function(data) {
+                var info = processData(data);
+                createPropSymbols(info.timestamps, data);   
+                createSliderUI(info.timestamps);             
+				createLegend(info.min,info.max);            
+			});
+			
+			
+			geojson = L.geoJson(base, {
+		style: style,
+		}).addTo(map);
+			
+		function style(feature) {
+		return {
+			weight: 0.6,
+			opacity: 1,
+			color: 'gray',
+			fillOpacity: 0.1,
+			dashArray: '1',
+			//fillColor: getColor(feature.properties.Casos)
+		};
+	}
+
+          function processData(data) {
+              // First, initialize the variables to hold the timestamps and min/max population values
+              var timestamps = [];  // square brackets to define an array of data
+                                    // because there are multiple timestamps
+              var	min = Infinity; // for the min, begin with the largest possible value - infinity
+              var	max = -Infinity;// for the max, begin with the smallest possible value - negative infinity
+
+              // Go through each row/feature of the data table
+              // Note data is the variable name in the function definition - processData(data)
+              for (var feature in data.features) {
+                  var properties = data.features[feature].properties;
+
+                  // At each row, go through the columns/attributes to get the values
+                  for (var attribute in properties) {
+                      if ( attribute != 'id' &&
+                           attribute != 'name' &&
+                           attribute != 'latitude' &&
+                           attribute != 'longitude' )   // != means NOT EQUAL TO
+                                                  // These three columns are NOT recorded
+                                                  // Modify this part when mapping your own data
+                      {
+                          if ( $.inArray(attribute,timestamps) ===  -1) { // JQuery in.Array() method searches for a specified value within an array and return its index (or -1 if not found)
+                                                            // here, the new timestamp is only added when it is not already in the array
+                                                            // triple equals === compares both type and value
+
+                              timestamps.push(attribute);  // The JS push() method adds new items to the end of an array
+                                                           // and returns the new length of the array
+                          }
+                          if (properties[attribute] < min) {
+                              min = properties[attribute]; // record/update the current smaller values as the min
+                          }
+                          if (properties[attribute] > max) {
+                              max = properties[attribute]; // record/update the current larger values as the max
+                          }
+                      }
+                  }
+              }
+              return {
+                  timestamps : timestamps,
+                  min : min,
+                  max : max
+              }
+            }
+
+          // ___________The function to draw the proportional symbols
+            function createPropSymbols(timestamps, data) {
+
+              cities = L.geoJson(data, {
+
+                  // By default, Leaflet draws geojson points as simple markers
+                  // To alter this, the pointToLayer function needs to be used
+                  pointToLayer: function(feature, latlng) {
+                      return L.circleMarker(latlng, { // we use circle marker for the points
+                          fillColor: "#736fd6",  // fill color of the circles
+                          color: '#736fd6',      // border color of the circles
+                          weight: 1,             // circle line weight in pixels
+                          fillOpacity: 0.5       // fill opacity (0-1)
+                      }).on({
+                          mouseover: function(e) {
+                                this.openPopup();
+                                this.setStyle({fillColor: '#fa9fb5'});  // fill color turns green when mouseover
+                            },
+                            mouseout: function(e) {
+                                this.closePopup();
+                                this.setStyle({fillColor: "#736fd6"});  // fill turns original color when mouseout
+                            }
+                    });
+                  }
+              }).addTo(map);
+
+              updatePropSymbols(timestamps[1]); // this function is defined below
+                                              // When loaded, the map will first show proportional symbols with the first timestamp's data
+            }
+
+            // ______________The function to update/resize each circle marker according to a value in the time series
+            function updatePropSymbols(timestamp) {
+
+              cities.eachLayer(function(layer) {  // eachLayer() is an Leaflet function to iterate over the layers/points of the map
+
+                  var props = layer.feature.properties;   // attributes
+                  var radius = calcPropRadius(props[timestamp]); // circle radius, calculation function defined below
+
+                  // pop-up information (when mouseover) for each city is also defined here
+                  var popupContent = '<div ALIGN="CENTER">' +'<span style = "font-weight:bold; color:black"</span>' +props.Concelho + '<div ALIGN="CENTER">' + '<span style = "font-weight:bold; color: #c62121"</span>' + String(props[timestamp]) + '<span style="font-weight:normal; color:black"</span> centro(s) de saúde</font>';
+
+                  layer.setRadius(radius);  // Leaflet method for setting the radius of a circle
+                  layer.bindPopup(popupContent, { offset: new L.Point(0,-radius) }); // bind the popup content, with an offset
+              });
+            }
+
+            // calculate the radius of the proportional symbols based on area
+            function calcPropRadius(attributeValue) {
+
+              var scaleFactor = 88   // the scale factor is used to scale the values; the units of the radius are in meters
+                                         // you may determine the scale factor accordingly based on the range of the values and the mapping scale
+              var area = attributeValue * scaleFactor;
+
+              return Math.sqrt(area/Math.PI);  // the function return the radius of the circle to be used in the updatePropSymbols()
+            }
+
+          // ______________Barra Time Slider
+          function createSliderUI(timestamps) {
+            var sliderControl = L.control({ position: 'bottomleft'} ); // position of the slider
+                              // Another use of L.control :)
+            sliderControl.onAdd = function(map) {
+              //initialize a range slider with mousedown control
+                var slider = L.DomUtil.create("input", "range-slider");
+                L.DomEvent.addListener(slider, 'mousedown', function(e) {
+                    L.DomEvent.stopPropagation(e);
+				map.dragging.disable();
+				map.dragging.enable();		
+                });
+
+              // Define the labels of the time slider as an array of strings
+              // Modify this for your data
+              var labels = ["2011","2012"]
+			  
+              $(slider)
+                  .attr({
+                    'type':'range',
+                    'max': timestamps[1],
+                    'min':timestamps[0],
+                    'step': 1, // Change this to match the numeric interval between adjacent timestamps
+                    'value': String(timestamps[0])
+                  })
+                  .on('input change', function() {
+                      updatePropSymbols($(this).val().toString()); // update the map for the timestamp
+                      var i = $.inArray(this.value,timestamps);
+                      $(".temporal-legend").text(labels[i]); // update the label for the timestamp
+                  });
+              return slider;
+            }
+            sliderControl.addTo(map);
+            createTimeLabel("2011"); //The starting timestamp label
+          }
+
+
+        // Add labels to the time slider when the map first loaded
+        function createTimeLabel(startTimestamp) {
+          var temporalLegend = L.control({position: 'bottomleft' }); // same position as the slider
+                               // One more use of L.control !!
+          temporalLegend.onAdd = function(map) {
+              var output = L.DomUtil.create("output", "temporal-legend");
+              $(output).text(startTimestamp);
+              return output;
+          }
+          temporalLegend.addTo(map);
+        }
+		
+		// ______________Legenda com circulos
+		function createLegend(min, max) {
+		 
+			if (min < 10) {	
+				min = 1; 
+			}
+
+		function roundNumber(inNumber) {
+
+				return (Math.round(inNumber*1));  
+		}
+
+			var legend = L.control( { position: 'bottomright' } );
+
+				legend.onAdd = function(map) {
+
+				var legendContainer = L.DomUtil.create("div", "legend");  
+				var symbolsContainer = L.DomUtil.create("div", "symbolsContainer");
+				var classes = [roundNumber(1), roundNumber(10), roundNumber(17)];
+				console.log(min);
+				console.log(max);				
+				var legendCircle;  
+				var lastRadius = 1;
+				var currentRadius;
+				var margin;
+		
+		L.DomEvent.addListener(legendContainer, 'mousedown', function(e) { 
+			L.DomEvent.stopPropagation(e); 
+		});  
+
+		$(legendContainer).append('<FONT SIZE=2 style = "font-family:verdana"><b>Nº de centros <br> <br>de saúde</b> <br><br> </font>  <FONT SIZE=1 style = "font-family:verdana"> Fonte dos dados: <a href="https://www.ine.pt/xportal/xmain?xpid=INE&xpgid=ine_indicadores&indOcorrCod=0008200&xlang=pt&contexto=bd&selTab=tab2" target="_blank">INE</a> <br> <br> </font>');
+		
+		for (var i = 0; i <= classes.length-1; i++) {  
+
+			legendCircle = L.DomUtil.create("div", "legendCircle");  
+			
+			currentRadius = calcPropRadius(classes[i]);
+			console.log(currentRadius);
+
+			margin = -currentRadius - lastRadius - 2;
+
+			$(legendCircle).attr("style", "width: " + currentRadius*2 + 
+				"px; height: " + currentRadius*2 + 
+				"px; margin-left: " + margin + "px" );	
+			$(legendCircle).append("<span class='legendValue'>"+classes[i]+"</span>");
+
+			$(symbolsContainer).append(legendCircle);
+
+			lastRadius = currentRadius;
+			
+			}
+
+		$(legendContainer).append(symbolsContainer); 
+
+		return legendContainer; 
+
+		};
+
+		legend.addTo(map);  
+	}   // end createLegend();
+	
+		
+	// Creating scale control
+			var scale = L.control.scale();
+			scale.addTo(map);
+			
+	// Creating Zoom Home
+			var zoomHome = new L.Control.zoomHome();
+			zoomHome.addTo(map);			
+
+      </script>
+
+  </body>
+</html>
